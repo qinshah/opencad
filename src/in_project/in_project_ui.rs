@@ -41,14 +41,18 @@ pub fn in_project_ui_system(
         .min_width(100.0)
         .default_width(200.0)
         .show(ctx, |ui| {
-            ScrollArea::vertical().show(ui, |ui| {
-                ui.heading("文件树");
-                ui.separator();
-                if let Some(file_tree) = file_tree.as_mut() {
-                    file_tree.show(ui);
-                }
-            });
+            ui.heading("文件树");
+            ui.separator();
+            if let Some(file_tree) = file_tree.as_mut() {
+                file_tree.show(ui);
+            }
         });
+
+    // 显示新建文件/文件夹对话框
+    if let Some(file_tree) = file_tree.as_mut() {
+        file_tree.show_new_item_dialog(ctx);
+        file_tree.show_dxf_viewer(ctx);
+    }
 
     // // // 右侧面板
     // // SidePanel::right("right_panel")

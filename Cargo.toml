@@ -9,7 +9,7 @@ bevy_egui = "0.39.0"
 bevy_panorbit_camera = "0.34.0"
 chrono = "0.4.43"
 dirs = "6.0.0"
-dxf = "0.6.0"
+dxf = { version = "0.6.0", features = ["serialize"] }
 egui_ltreeview = "0.6.0"
 rfd = "0.17.2"
 serde = "1.0.228"
