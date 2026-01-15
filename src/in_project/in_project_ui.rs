@@ -1,21 +1,30 @@
 use crate::state::AppState;
 
-use super::CurrentProject;
+use super::{FileTree, Project};
 use bevy::{
     prelude::*,
     window::{PrimaryWindow, Window},
 };
 use bevy_egui::*;
 use egui::*;
-use egui_ltreeview::TreeView;
 
 pub fn in_project_ui_system(
     mut contexts: EguiContexts,
-    window: Single<&mut Window, With<PrimaryWindow>>,
-    mut project: ResMut<CurrentProject>,
+    _window: Single<&mut Window, With<PrimaryWindow>>,
+    project: Res<Project>,
     mut next_state: ResMut<NextState<AppState>>,
+    mut file_tree: Local<Option<FileTree>>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
+
+    // 初始化文件树（只在第一次运行时）或路径不一致时重新创建
+    let should_recreate_tree = match file_tree.as_ref() {
+        None => true,
+        Some(tree) => !tree.is_same_root_path(&project.path),
+    };
+    if should_recreate_tree {
+        *file_tree = Some(FileTree::new(project.path.clone()));
+    }
 
     // 顶部菜单栏
     TopBottomPanel::top("title_bar").show(ctx, |ui| {
@@ -25,21 +34,18 @@ pub fn in_project_ui_system(
             }
         });
     });
-    
+
     // 左侧面板
     SidePanel::left("left_panel")
         .resizable(true)
         .min_width(100.0)
         .default_width(200.0)
         .show(ctx, |ui| {
-            let id = ui.make_persistent_id("Names tree view");
-            TreeView::new(id).show(ui, |builder| {
-                builder.dir(0, "Root");
-                builder.leaf(1, "Ava");
-                builder.leaf(2, "Benjamin");
-                builder.leaf(3, "Charlotte");
-                builder.close_dir();
-            });
+            ui.heading("文件树");
+            ui.separator();
+            if let Some(file_tree) = file_tree.as_mut() {
+                file_tree.show(ui);
+            }
         });
 
     // // // 右侧面板

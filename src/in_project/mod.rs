@@ -1,9 +1,11 @@
-mod current_project;
+mod project;
+mod file_tree;
 mod in_project_ui;
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
-pub use current_project::CurrentProject;
+pub use project::Project;
+pub use file_tree::FileTree;
 pub use in_project_ui::in_project_ui_system;
 
 use crate::state::AppState;

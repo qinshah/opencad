@@ -1,6 +1,6 @@
 use super::project_manager::ProjectManager;
 use crate::state::AppState;
-use crate::in_project::CurrentProject;
+use crate::in_project::Project;
 use bevy::prelude::*;
 use bevy_egui::*;
 use egui::*;
@@ -99,7 +99,7 @@ pub fn main_menu_ui_system(
 
             // TODO 打开项目
             if let Some(project) = project_to_open {
-                commands.insert_resource(CurrentProject::new(project.path));
+                commands.insert_resource(Project::new(project.path));
                 next_state.set(AppState::InPreject);
             }
         }

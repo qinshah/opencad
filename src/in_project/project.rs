@@ -2,12 +2,12 @@ use bevy::prelude::*;
 use std::path::PathBuf;
 
 #[derive(Resource)]
-pub struct CurrentProject {
+pub struct Project {
     pub path: PathBuf,
     pub name: String,
 }
 
-impl CurrentProject {
+impl Project {
     pub fn new(path: PathBuf) -> Self {
         let name = path
             .file_name()
