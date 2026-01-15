@@ -1,22 +1,33 @@
-mod project;
 mod file_tree;
+pub use file_tree::FileTree;
 mod in_project_ui;
+pub use in_project_ui::in_project_ui_system;
+mod project;
+pub use project::Project;
+mod focus_change;
+pub use focus_change::focus_change_system;
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
-pub use project::Project;
-pub use file_tree::FileTree;
-pub use in_project_ui::in_project_ui_system;
+use bevy_panorbit_camera::PanOrbitCameraPlugin;
 
+use crate::editor;
 use crate::state::AppState;
 
 pub struct InProjectPlugin;
 
 impl Plugin for InProjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            EguiPrimaryContextPass,
-            in_project_ui_system.run_if(in_state(AppState::InPreject)),
-        );
+        app.add_plugins(PanOrbitCameraPlugin) // 相机插件
+            .add_systems(OnEnter(AppState::InPreject), editor::init_system)
+            .add_systems(
+                EguiPrimaryContextPass,
+                in_project_ui_system.run_if(in_state(AppState::InPreject)),
+            )
+            .add_systems(
+                Update,
+                focus_change_system.run_if(in_state(AppState::InPreject)),
+            )
+            .add_systems(OnExit(AppState::InPreject), editor::dispose_system);
     }
 }

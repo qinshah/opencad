@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_egui::*;
 
 use crate::{in_project::InProjectPlugin, main_menu::MainMenuPlugin};
+mod editor;
 mod font_system;
 mod in_project;
 mod main_menu;
@@ -26,8 +27,8 @@ fn main() {
         )
         .add_plugins((
             EguiPlugin::default(), // egui插件
-            MainMenuPlugin,
-            InProjectPlugin,
+            MainMenuPlugin, // 主菜单
+            InProjectPlugin, // 项目中
         ))
         .run();
 }
