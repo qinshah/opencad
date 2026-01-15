@@ -1,3 +1,4 @@
+use bevy_egui::egui;
 use egui_ltreeview::TreeView;
 use std::collections::HashMap;
 use std::fs;
@@ -117,20 +118,30 @@ impl FileTree {
             self.load_children(dir_id);
         }
 
-        TreeView::new(tree_id).show(ui, |builder| {
-            // 构建根目录
-            if let Some(root_node) = self.nodes.get(&0) {
-                builder.dir(0, &root_node.name);
+        ui.allocate_ui_with_layout(
+            egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                // 构建子项
-                let child_ids = root_node.children.clone();
-                for child_id in child_ids {
-                    Self::build_tree_node_static(&self.nodes, builder, child_id);
-                }
+                TreeView::new(tree_id)
+                    .allow_drag_and_drop(false)
+                    .show(ui, |builder| {
+                        // 构建根目录
+                        if let Some(root_node) = self.nodes.get(&0) {
+                            builder.dir(0, &root_node.name);
 
-                builder.close_dir();
-            }
-        });
+                            // 构建子项
+                            let child_ids = root_node.children.clone();
+                            for child_id in child_ids {
+                                Self::build_tree_node_static(&self.nodes, builder, child_id);
+                            }
+
+                            builder.close_dir();
+                        }
+                    });
+            },
+        );
     }
 
     /// 构建单个树节点（静态方法避免借用问题）
