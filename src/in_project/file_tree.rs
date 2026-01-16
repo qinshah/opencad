@@ -1,3 +1,4 @@
+use bevy::prelude::*;
 use bevy_egui::egui;
 use dxf::Drawing;
 use egui_ltreeview::TreeView;
@@ -5,6 +6,8 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::PathBuf;
+
+use super::LoadDxfEvent;
 
 /// 文件树节点
 #[derive(Debug, Clone)]
@@ -43,13 +46,19 @@ pub struct NewItemDialog {
     pub parent_path: PathBuf,
 }
 
-/// DXF查看器窗口状态
+/// DXF JSON查看器窗口状态
 #[derive(Default)]
-pub struct DxfViewer {
+pub struct DxfJsonViewer {
     pub open: bool,
     pub file_path: PathBuf,
     pub json_content: String,
     pub error: Option<String>,
+}
+
+/// 待处理的动作
+#[derive(Default)]
+pub struct PendingActions {
+    pub load_dxf: Option<PathBuf>,
 }
 
 /// 文件树组件
@@ -59,10 +68,12 @@ pub struct FileTree {
     next_id: u64,
     /// 新建文件/文件夹对话框
     pub new_item_dialog: NewItemDialog,
-    /// DXF查看器
-    pub dxf_viewer: DxfViewer,
+    /// DXF JSON查看器
+    pub dxf_json_viewer: DxfJsonViewer,
     /// 需要刷新的目录ID
     refresh_dir: Option<u64>,
+    /// 待处理的动作
+    pub pending_actions: PendingActions,
 }
 
 impl FileTree {
@@ -72,8 +83,9 @@ impl FileTree {
             nodes: HashMap::new(),
             next_id: 1,
             new_item_dialog: NewItemDialog::default(),
-            dxf_viewer: DxfViewer::default(),
+            dxf_json_viewer: DxfJsonViewer::default(),
             refresh_dir: None,
+            pending_actions: PendingActions::default(),
         };
 
         // 添加根节点
@@ -83,6 +95,13 @@ impl FileTree {
         tree.load_children(0);
 
         tree
+    }
+
+    /// 处理待发送的事件
+    pub fn process_pending_events(&mut self, dxf_events: &mut MessageWriter<LoadDxfEvent>) {
+        if let Some(path) = self.pending_actions.load_dxf.take() {
+            dxf_events.write(LoadDxfEvent { path });
+        }
     }
 
     /// 加载目录子项（强制刷新）
@@ -179,6 +198,14 @@ impl FileTree {
         None
     }
 
+    /// 判断是否为DXF文件
+    fn is_dxf_file(path: &PathBuf) -> bool {
+        path.extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_lowercase() == "dxf")
+            .unwrap_or(false)
+    }
+
     /// 显示文件树
     pub fn show(&mut self, ui: &mut egui::Ui) {
         // 处理待刷新的目录
@@ -218,6 +245,14 @@ impl FileTree {
                                     ui.close();
                                 }
 
+                                // DXF文件特有：查看JSON
+                                if !*is_dir && Self::is_dxf_file(path) {
+                                    if ui.button("📋 查看JSON").clicked() {
+                                        context_action = Some(ContextAction::ViewDxfJson(path.clone()));
+                                        ui.close();
+                                    }
+                                }
+
                                 ui.separator();
 
                                 let target_path = if *is_dir {
@@ -234,7 +269,7 @@ impl FileTree {
                                     ui.close();
                                 }
 
-                                if ui.button("� 新建文件").clicked() {
+                                if ui.button("📄 新建文件").clicked() {
                                     context_action =
                                         Some(ContextAction::NewFile(target_path.clone()));
                                     ui.close();
@@ -296,6 +331,9 @@ impl FileTree {
                 ContextAction::Open(path) => {
                     self.handle_open(&path);
                 }
+                ContextAction::ViewDxfJson(path) => {
+                    self.open_dxf_json_viewer(&path);
+                }
                 ContextAction::NewFolder(path) => {
                     self.new_item_dialog = NewItemDialog {
                         open: true,
@@ -330,18 +368,11 @@ impl FileTree {
             }
         } else {
             // 文件：根据扩展名处理
-            let ext = path
-                .extension()
-                .and_then(|e| e.to_str())
-                .map(|e| e.to_lowercase())
-                .unwrap_or_default();
-
-            match ext.as_str() {
-                "dxf" => self.open_dxf_file(path),
-                _ => {
-                    // 其他文件暂不处理
-                }
+            if Self::is_dxf_file(path) {
+                // DXF文件：发送渲染事件
+                self.pending_actions.load_dxf = Some(path.clone());
             }
+            // 其他文件暂不处理
         }
     }
 
@@ -349,7 +380,7 @@ impl FileTree {
     fn build_tree(&self, builder: &mut egui_ltreeview::TreeViewBuilder<u64>, node_id: u64) {
         if let Some(node) = self.nodes.get(&node_id) {
             if node.is_directory {
-                let display_name = format!("� {}", node.name);
+                let display_name = format!("📁 {}", node.name);
                 builder.dir(node_id, &display_name);
 
                 for &child_id in &node.children {
@@ -449,59 +480,59 @@ impl FileTree {
         }
     }
 
-    /// 打开DXF文件
-    fn open_dxf_file(&mut self, path: &PathBuf) {
-        self.dxf_viewer.file_path = path.clone();
-        self.dxf_viewer.error = None;
+    /// 打开DXF JSON查看器
+    fn open_dxf_json_viewer(&mut self, path: &PathBuf) {
+        self.dxf_json_viewer.file_path = path.clone();
+        self.dxf_json_viewer.error = None;
 
         match Drawing::load_file(path) {
             Ok(drawing) => match serde_json::to_string_pretty(&drawing) {
                 Ok(json) => {
-                    self.dxf_viewer.json_content = json;
-                    self.dxf_viewer.open = true;
+                    self.dxf_json_viewer.json_content = json;
+                    self.dxf_json_viewer.open = true;
                 }
                 Err(e) => {
-                    self.dxf_viewer.error = Some(format!("JSON序列化失败: {}", e));
-                    self.dxf_viewer.open = true;
+                    self.dxf_json_viewer.error = Some(format!("JSON序列化失败: {}", e));
+                    self.dxf_json_viewer.open = true;
                 }
             },
             Err(e) => {
-                self.dxf_viewer.error = Some(format!("DXF解析失败: {}", e));
-                self.dxf_viewer.open = true;
+                self.dxf_json_viewer.error = Some(format!("DXF解析失败: {}", e));
+                self.dxf_json_viewer.open = true;
             }
         }
     }
 
-    /// 显示DXF查看器窗口
-    pub fn show_dxf_viewer(&mut self, ctx: &egui::Context) {
-        if !self.dxf_viewer.open {
+    /// 显示DXF JSON查看器窗口
+    pub fn show_dxf_json_viewer(&mut self, ctx: &egui::Context) {
+        if !self.dxf_json_viewer.open {
             return;
         }
 
         let file_name = self
-            .dxf_viewer
+            .dxf_json_viewer
             .file_path
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("DXF");
 
-        let title = format!("DXF查看器 - {}", file_name);
+        let title = format!("DXF JSON - {}", file_name);
 
         egui::Window::new(title)
             .default_size([600.0, 400.0])
-            .open(&mut self.dxf_viewer.open)
+            .open(&mut self.dxf_json_viewer.open)
             .show(ctx, |ui| {
-                if let Some(ref error) = self.dxf_viewer.error {
+                if let Some(ref error) = self.dxf_json_viewer.error {
                     ui.colored_label(egui::Color32::RED, error);
                 } else {
                     ui.horizontal(|ui| {
                         if ui.button("📋 复制").clicked() {
-                            ctx.copy_text(self.dxf_viewer.json_content.clone());
+                            ctx.copy_text(self.dxf_json_viewer.json_content.clone());
                         }
                         if ui.button("💾 保存JSON").clicked() {
-                            let json_path = self.dxf_viewer.file_path.with_extension("dxf.json");
+                            let json_path = self.dxf_json_viewer.file_path.with_extension("dxf.json");
                             if let Ok(mut file) = File::create(&json_path) {
-                                let _ = file.write_all(self.dxf_viewer.json_content.as_bytes());
+                                let _ = file.write_all(self.dxf_json_viewer.json_content.as_bytes());
                             }
                         }
                     });
@@ -512,7 +543,7 @@ impl FileTree {
                         .auto_shrink([false, false])
                         .show(ui, |ui| {
                             ui.add(
-                                egui::TextEdit::multiline(&mut self.dxf_viewer.json_content)
+                                egui::TextEdit::multiline(&mut self.dxf_json_viewer.json_content)
                                     .font(egui::TextStyle::Monospace)
                                     .code_editor()
                                     .desired_width(f32::INFINITY),
@@ -531,6 +562,7 @@ impl FileTree {
 /// 右键菜单动作
 enum ContextAction {
     Open(PathBuf),
+    ViewDxfJson(PathBuf),
     NewFolder(PathBuf),
     NewFile(PathBuf),
     Refresh(PathBuf),

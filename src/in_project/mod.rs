@@ -6,6 +6,8 @@ mod project;
 pub use project::Project;
 mod focus_change;
 pub use focus_change::focus_change_system;
+mod dxf_renderer;
+pub use dxf_renderer::{dxf_gizmos_system, dxf_load_system, DxfDrawData, LoadDxfEvent};
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
@@ -18,7 +20,9 @@ pub struct InProjectPlugin;
 
 impl Plugin for InProjectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(PanOrbitCameraPlugin) // 相机插件
+        app.add_plugins(PanOrbitCameraPlugin)
+            .add_message::<LoadDxfEvent>()
+            .init_resource::<DxfDrawData>()
             .add_systems(OnEnter(AppState::InPreject), editor::init_system)
             .add_systems(
                 EguiPrimaryContextPass,
@@ -26,7 +30,8 @@ impl Plugin for InProjectPlugin {
             )
             .add_systems(
                 Update,
-                focus_change_system.run_if(in_state(AppState::InPreject)),
+                (focus_change_system, dxf_load_system, dxf_gizmos_system)
+                    .run_if(in_state(AppState::InPreject)),
             )
             .add_systems(OnExit(AppState::InPreject), editor::dispose_system);
     }

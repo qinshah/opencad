@@ -1,6 +1,6 @@
 use crate::state::AppState;
 
-use super::{FileTree, Project};
+use super::{FileTree, LoadDxfEvent, Project};
 use bevy::{
     prelude::*,
     window::{PrimaryWindow, Window},
@@ -14,6 +14,7 @@ pub fn in_project_ui_system(
     project: Res<Project>,
     mut next_state: ResMut<NextState<AppState>>,
     mut file_tree: Local<Option<FileTree>>,
+    mut dxf_events: MessageWriter<LoadDxfEvent>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
 
@@ -48,26 +49,12 @@ pub fn in_project_ui_system(
             }
         });
 
-    // 显示新建文件/文件夹对话框
+    // 显示对话框和处理事件
     if let Some(file_tree) = file_tree.as_mut() {
         file_tree.show_new_item_dialog(ctx);
-        file_tree.show_dxf_viewer(ctx);
+        file_tree.show_dxf_json_viewer(ctx);
+        file_tree.process_pending_events(&mut dxf_events);
     }
-
-    // // // 右侧面板
-    // // SidePanel::right("right_panel")
-    // //     .resizable(true)
-    // //     .min_width(100.0)
-    // //     .default_width(200.0)
-    // //     .show(ctx, |ui| {
-    // //         ui.heading("右侧面板");
-    // //     });
-
-    // // 底部状态栏
-    // TopBottomPanel::bottom("bottom_bar").show(ctx, |ui| {
-    //     ui.label("底部状态栏");
-    //     ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
-    // });
 
     Ok(())
 }
