@@ -10,9 +10,18 @@ opt-level = 1
 [profile.dev.package."*"]
 opt-level = 3
 
+# release 编译时把 dynamic_linking 特性关掉
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+[profile.release.package.bevy]
+strip = true                   # 减小wasm体积
+features = []                  # 把 dev 时的 dynamic_linking 抹掉
+
 [dependencies]
 log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] } # 禁用编译时的详细日志级别，提升运行性能
-bevy = { version = "0.18.0", features = ["dynamic_linking"] } # 动态链接提升编译速度
+bevy = { version = "0.18.0", features = ["dynamic_linking"] }                     # 动态链接提升编译速度
 bevy_egui = "0.39.0"
 bevy_panorbit_camera = "0.34.0"
 chrono = "0.4.43"

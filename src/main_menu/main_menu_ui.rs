@@ -1,9 +1,10 @@
 use super::project_manager::ProjectManager;
-use crate::state::AppState;
 use crate::in_project::Project;
+use crate::state::AppState;
 use bevy::prelude::*;
 use bevy_egui::*;
 use egui::*;
+use std::path::PathBuf;
 use std::sync::Mutex;
 use std::thread;
 
@@ -39,6 +40,11 @@ pub fn main_menu_ui_system(
         if ui.button("📁 导入项目").clicked() && !state.is_dialog_open {
             state.is_dialog_open = true;
             open_folder_dialog_in_thread();
+        }
+
+        if ui.button("📁 打开空项目").clicked() {
+            commands.insert_resource(Project::new(PathBuf::from("空项目")));
+            next_state.set(AppState::InPreject);
         }
 
         // 检查对话框结果
@@ -87,7 +93,10 @@ pub fn main_menu_ui_system(
                 });
 
                 ui.label(format!("路径: {}", project.path.display()));
-                ui.label(format!("最后打开: {}", format_timestamp(project.last_opened)));
+                ui.label(format!(
+                    "最后打开: {}",
+                    format_timestamp(project.last_opened)
+                ));
                 ui.add_space(10.0);
             }
 
@@ -114,6 +123,7 @@ fn format_timestamp(timestamp: u64) -> String {
     datetime.format("%Y-%m-%d %H:%M").to_string()
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn open_folder_dialog_in_thread() {
     thread::spawn(move || {
         let home_dir = std::env::home_dir().unwrap();
@@ -126,4 +136,10 @@ fn open_folder_dialog_in_thread() {
             *dialog_result = Some(result);
         }
     });
+}
+
+#[cfg(target_arch = "wasm32")]
+fn open_folder_dialog_in_thread() -> Option<String> {
+    // 这里返回浏览器选中的文件 URL / 内容
+    todo!("use <input type='file'> via web-sys")
 }
