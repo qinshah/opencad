@@ -7,7 +7,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::PathBuf;
 
-use super::LoadDxfEvent;
+use super::LoadDxfMessage;
 
 /// 文件树节点
 #[derive(Debug, Clone)]
@@ -98,9 +98,9 @@ impl FileTree {
     }
 
     /// 处理待发送的事件
-    pub fn process_pending_events(&mut self, dxf_events: &mut MessageWriter<LoadDxfEvent>) {
+    pub fn process_pending_events(&mut self, dxf_messages: &mut MessageWriter<LoadDxfMessage>) {
         if let Some(path) = self.pending_actions.load_dxf.take() {
-            dxf_events.write(LoadDxfEvent { path });
+            dxf_messages.write(LoadDxfMessage { path });
         }
     }
 

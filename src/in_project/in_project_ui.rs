@@ -1,6 +1,6 @@
 use crate::state::AppState;
 
-use super::{FileTree, LoadDxfEvent, Project};
+use super::{FileTree, LoadDxfMessage, Project};
 use bevy::{
     prelude::*,
     window::{PrimaryWindow, Window},
@@ -14,7 +14,7 @@ pub fn in_project_ui_system(
     project: Res<Project>,
     mut next_state: ResMut<NextState<AppState>>,
     mut file_tree: Local<Option<FileTree>>,
-    mut dxf_events: MessageWriter<LoadDxfEvent>,
+    mut dxf_messages: MessageWriter<LoadDxfMessage>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
 
@@ -53,7 +53,7 @@ pub fn in_project_ui_system(
     if let Some(file_tree) = file_tree.as_mut() {
         file_tree.show_new_item_dialog(ctx);
         file_tree.show_dxf_json_viewer(ctx);
-        file_tree.process_pending_events(&mut dxf_events);
+        file_tree.process_pending_events(&mut dxf_messages);
     }
 
     Ok(())

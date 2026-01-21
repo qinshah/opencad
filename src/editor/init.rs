@@ -27,6 +27,14 @@ pub fn init_system(
                     ..default()
                 },
             ));
+            // 灯光
+            editor.spawn((
+                DirectionalLight {
+                    illuminance: 10000.0,
+                    ..default()
+                },
+                Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, 0.5, 0.0)),
+            ));
             // 立方体
             editor.spawn((
                 Mesh3d(meshes.add(Cuboid::new(2.0, 2.0, 2.0))),
@@ -36,7 +44,6 @@ pub fn init_system(
                 })),
                 Transform::from_xyz(0.0, 1.0, 0.0),
             ));
-
             // 球体
             editor.spawn((
                 Mesh3d(meshes.add(Sphere::new(1.0))),
@@ -46,7 +53,6 @@ pub fn init_system(
                 })),
                 Transform::from_xyz(3.0, 1.0, 0.0),
             ));
-
             // 地面
             editor.spawn((
                 Mesh3d(meshes.add(Plane3d::default().mesh().size(20.0, 20.0))),
@@ -55,15 +61,6 @@ pub fn init_system(
                     ..default()
                 })),
                 Transform::from_xyz(0.0, 0.0, 0.0),
-            ));
-
-            // 灯光
-            editor.spawn((
-                DirectionalLight {
-                    illuminance: 10000.0,
-                    ..default()
-                },
-                Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, 0.5, 0.0)),
             ));
         });
 }
